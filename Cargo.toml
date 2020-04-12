@@ -7,3 +7,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+core-foundation = "0.6.0"
+core-foundation-sys = "0.6.0"
+io-kit-sys = "0.1.0"
+mach = "0.2"
