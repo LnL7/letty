@@ -2,7 +2,7 @@ use std::error;
 use std::thread;
 use std::time;
 
-use letty::*;
+use letty::hid::*;
 
 
 fn main() -> Result<(), Box<dyn error::Error>> {
