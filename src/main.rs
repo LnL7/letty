@@ -14,7 +14,7 @@ use std::ptr;
 use std::thread;
 use std::time;
 
-use core_foundation::base::{kCFAllocatorDefault, CFGetRetainCount, CFRetain, CFRelease, TCFType};
+use core_foundation::base::{kCFAllocatorDefault, CFGetRetainCount, CFRelease, TCFType};
 use core_foundation::dictionary::{CFDictionary, CFDictionaryRef};
 use core_foundation::number::CFNumber;
 use core_foundation::array::{CFArrayGetCount, CFArrayGetValueAtIndex};
@@ -95,10 +95,9 @@ impl IOHIDManager {
 
 extern "C" fn vec_push_applier(value: *const c_void, context: *const c_void) {
     let vec = unsafe { &mut *(context as *mut Vec<IOHIDDevice>) };
-    let device = IOHIDDevice(value as IOHIDDeviceRef);
     // Moving ownersip of devices from the copied set to rust, since the array will be
     // released before returning.
-    unsafe { CFRetain(device.as_CFTypeRef()) };
+    let device = unsafe { IOHIDDevice::wrap_under_get_rule(value as IOHIDDeviceRef) };
     // eprintln!("  <IOHIDDevice retain {}>", unsafe { CFGetRetainCount(device.as_CFTypeRef()) });
     vec.push(device);
 }
@@ -134,10 +133,9 @@ impl IOHIDDevice {
                 unreachable!("failed to obtain element at index {}", i);
             }
 
-            let element = IOHIDElement(value as IOHIDElementRef);
             // Moving ownersip of elements from the copied array to rust, since the array will be
             // released before returning.
-            unsafe { CFRetain(element.as_CFTypeRef()) };
+            let element = unsafe { IOHIDElement::wrap_under_get_rule(value as IOHIDElementRef) };
             // eprintln!("  <IOHIDElement retain {}>", unsafe { CFGetRetainCount(element.as_CFTypeRef()) });
             vec.push(element);
         }
