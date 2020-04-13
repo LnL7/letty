@@ -11,8 +11,6 @@ use std::error;
 use std::ffi::{CStr, c_void};
 use std::io;
 use std::ptr;
-use std::thread;
-use std::time;
 
 use core_foundation::base::{kCFAllocatorDefault, CFGetRetainCount, CFRelease, TCFType};
 use core_foundation::dictionary::{CFDictionary, CFDictionaryRef};
@@ -31,7 +29,7 @@ use io_kit_sys::ret::{kIOReturnSuccess, IOReturn};
 
 #[repr(C)]
 #[derive(Debug)]
-struct IOHIDManager(IOHIDManagerRef);
+pub struct IOHIDManager(IOHIDManagerRef);
 
 impl_TCFType!(IOHIDManager, IOHIDManagerRef, IOHIDManagerGetTypeID);
 
@@ -104,7 +102,7 @@ extern "C" fn vec_push_applier(value: *const c_void, context: *const c_void) {
 
 #[repr(C)]
 #[derive(Debug)]
-struct IOHIDDevice(IOHIDDeviceRef);
+pub struct IOHIDDevice(IOHIDDeviceRef);
 
 impl_TCFType!(IOHIDDevice, IOHIDDeviceRef, IOHIDDeviceGetTypeID);
 
@@ -153,11 +151,11 @@ impl IOHIDDevice {
         unsafe { CFRelease(product_key as _) };
 
         if property.is_null() {
-            None
-        } else {
-            let name = unsafe { CFString::wrap_under_get_rule(property as _) };
-            Some(name.to_string())
+            return None;
         }
+
+        let name = unsafe { CFString::wrap_under_get_rule(property as _) };
+        Some(name.to_string())
     }
 
     pub fn get_value(&self, element: &IOHIDElement) -> Result<i64, IOReturn> {
@@ -195,7 +193,7 @@ impl IOHIDDevice {
 
 #[repr(C)]
 #[derive(Debug)]
-struct IOHIDElement(IOHIDElementRef);
+pub struct IOHIDElement(IOHIDElementRef);
 
 impl_TCFType!(IOHIDElement, IOHIDElementRef, IOHIDElementGetTypeID);
 
@@ -214,7 +212,7 @@ impl IOHIDElement {
     }
 }
 
-fn keyboard_matching_dictionary() -> CFDictionary<CFString, CFNumber> {
+pub fn keyboard_matching_dictionary() -> CFDictionary<CFString, CFNumber> {
     let page_str = unsafe { CStr::from_ptr(kIOHIDDeviceUsagePageKey) };
     let page_key = CFString::from(page_str.to_str().unwrap());
     let page_value = CFNumber::from(kHIDPage_GenericDesktop as i32);
@@ -226,7 +224,7 @@ fn keyboard_matching_dictionary() -> CFDictionary<CFString, CFNumber> {
     CFDictionary::from_CFType_pairs(&[(page_key, page_value), (usage_key, usage_value)])
 }
 
-fn capslock_matching_dictionary() -> CFDictionary<CFString, CFNumber> {
+pub fn capslock_matching_dictionary() -> CFDictionary<CFString, CFNumber> {
     let page_str = unsafe { CStr::from_ptr(kIOHIDElementUsagePageKey) };
     let page_key = CFString::from(page_str.to_str().unwrap());
     let page_value = CFNumber::from(kHIDPage_LEDs as i32);
@@ -236,39 +234,4 @@ fn capslock_matching_dictionary() -> CFDictionary<CFString, CFNumber> {
     let usage_value = CFNumber::from(kHIDUsage_LED_CapsLock as i32);
 
     CFDictionary::from_CFType_pairs(&[(page_key, page_value), (usage_key, usage_value)])
-}
-
-
-fn main() -> Result<(), Box<dyn error::Error>> {
-
-    let keyboards = keyboard_matching_dictionary();
-    let leds = capslock_matching_dictionary();
-
-    for _ in 0..4 {
-        let mut manager = IOHIDManager::new()?;
-        manager.set_device_matching(&keyboards);
-
-        let mut devices = manager.get_devices();
-        for device in &mut devices {
-            // device.show();
-
-            if let Some(name) = device.get_name() {
-                eprintln!("name {:?}", name);
-            }
-
-            if let Ok(mut elements) = device.get_matching_elements(&leds) {
-                for element in &mut elements {
-                    if let Ok(current) = device.get_value(&element) {
-                        if let Ok(updated) = device.toggle_value(element) {
-                            eprintln!("value {} -> {}", current, updated);
-                        }
-                    }
-                }
-            }
-        }
-
-        thread::sleep(time::Duration::from_millis(400));
-    }
-
-    Ok(())
 }
